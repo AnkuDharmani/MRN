@@ -1,4 +1,6 @@
 const User = require('../models/User')
+const jwt = require('jsonwebtoken');
+const SECRET = process.env.JWT_SECRET || 'supersecretkey';
 
 const getAllUser = async (req, res) => {
     try {
@@ -30,5 +32,30 @@ const addNewUser = async (req, res) => {
     }
 }
 
+const handleLogin = async (req, res) => {
+    try {
+        const { name, email } = req.body;
 
-module.exports = { getAllUser, addNewUser };
+        if (!name || !email) {
+            return res.render('login', { message: 'All fields are required' });
+        }
+
+        const user = await User.findOne({ name, email });
+
+        if (!user) {
+            return res.render('login', { message: 'Invalid credentials' });
+        }
+
+        const token = jwt.sign({ userId: user._id, name: user.name }, SECRET, { expiresIn: '1h' });
+
+        res.cookie('auth_token', token, { httpOnly: true });
+        res.redirect('/dashboard');
+    } catch (err) {
+        console.error('Login error:', err);
+        res.status(500).render('login', { message: 'Server error' });
+    }
+};
+
+
+
+module.exports = { getAllUser, addNewUser, handleLogin };
